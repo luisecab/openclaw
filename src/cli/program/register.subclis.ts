@@ -133,6 +133,14 @@ const entries: SubCliEntry[] = [
     },
   },
   {
+    name: "jobs",
+    description: "Job search automation",
+    register: async (program) => {
+      const mod = await import("../jobs-cli.js");
+      mod.registerJobsCli(program);
+    },
+  },
+  {
     name: "dns",
     description: "DNS helpers",
     register: async (program) => {

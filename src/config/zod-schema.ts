@@ -27,6 +27,95 @@ const NodeHostSchema = z
   .strict()
   .optional();
 
+const JobsProviderBaseSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  })
+  .strict();
+
+const JobsProviderSchema = z.discriminatedUnion("kind", [
+  JobsProviderBaseSchema.extend({
+    kind: z.literal("rss"),
+    feedUrl: z.string().min(1),
+    company: z.string().optional(),
+  }).strict(),
+  JobsProviderBaseSchema.extend({
+    kind: z.literal("greenhouse"),
+    board: z.string().min(1),
+    company: z.string().optional(),
+  }).strict(),
+  JobsProviderBaseSchema.extend({
+    kind: z.literal("lever"),
+    company: z.string().min(1),
+  }).strict(),
+]);
+
+const JobsSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    schedule: z
+      .object({
+        time: z
+          .string()
+          .regex(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
+          .optional(),
+        timezone: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    query: z
+      .object({
+        keywords: z.array(z.string()).optional(),
+        query: z.string().optional(),
+        locations: z.array(z.string()).optional(),
+        remotePreference: z
+          .union([z.literal("remote"), z.literal("hybrid"), z.literal("onsite"), z.literal("any")])
+          .optional(),
+        seniority: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+      })
+      .strict()
+      .optional(),
+    providers: z.array(JobsProviderSchema).optional(),
+    delivery: z
+      .object({
+        channel: z.string().min(1),
+        target: z.string().min(1),
+        accountId: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    dedupe: z
+      .object({
+        retentionDays: z.number().int().positive().optional(),
+        maxEntries: z.number().int().positive().optional(),
+        storePath: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.enabled !== true) return;
+    if (!value.providers || value.providers.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["providers"],
+        message: "jobs.providers must include at least one provider entry.",
+      });
+    }
+    if (!value.delivery?.channel || !value.delivery?.target) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["delivery"],
+        message: "jobs.delivery.channel and jobs.delivery.target are required when jobs.enabled.",
+      });
+    }
+  })
+  .optional();
+
 export const OpenClawSchema = z
   .object({
     meta: z
@@ -221,6 +310,7 @@ export const OpenClawSchema = z
       .optional(),
     messages: MessagesSchema,
     commands: CommandsSchema,
+    jobs: JobsSchema,
     approvals: ApprovalsSchema,
     session: SessionSchema,
     cron: z

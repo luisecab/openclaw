@@ -156,6 +156,62 @@ Run `openclaw doctor` to surface risky/misconfigured DM policies.
 - [Cron + wakeups](https://docs.openclaw.ai/automation/cron-jobs); [webhooks](https://docs.openclaw.ai/automation/webhook); [Gmail Pub/Sub](https://docs.openclaw.ai/automation/gmail-pubsub).
 - [Skills platform](https://docs.openclaw.ai/tools/skills): bundled, managed, and workspace skills with install gating + UI.
 
+## Job Search
+
+OpenClaw can run a daily job search digest using safe providers (RSS feeds, Greenhouse, Lever) with de-duplication and channel delivery. This feature is opt-in and disabled by default.
+
+Example config snippet:
+
+```json
+{
+  "jobs": {
+    "enabled": true,
+    "schedule": {
+      "time": "08:30",
+      "timezone": "Europe/Warsaw"
+    },
+    "query": {
+      "keywords": ["typescript", "platform"],
+      "query": "engineer AND (remote OR hybrid)",
+      "locations": ["Poland", "Remote"],
+      "remotePreference": "remote",
+      "seniority": ["senior", "staff"],
+      "tags": ["backend", "platform"]
+    },
+    "providers": [
+      {
+        "kind": "rss",
+        "id": "acme-rss",
+        "label": "Acme Alerts",
+        "feedUrl": "https://example.com/jobs.rss"
+      },
+      {
+        "kind": "greenhouse",
+        "id": "acme-greenhouse",
+        "board": "acme"
+      },
+      {
+        "kind": "lever",
+        "id": "acme-lever",
+        "company": "acme"
+      }
+    ],
+    "delivery": {
+      "channel": "slack",
+      "target": "channel:C0123456789"
+    }
+  }
+}
+```
+
+Run manually:
+
+```bash
+openclaw jobs run
+```
+
+To stay within platform terms, use official APIs (like Greenhouse/Lever) or bring your own RSS/alert feed URL rather than scraping.
+
 ### Runtime + safety
 - [Channel routing](https://docs.openclaw.ai/concepts/channel-routing), [retry policy](https://docs.openclaw.ai/concepts/retry), and [streaming/chunking](https://docs.openclaw.ai/concepts/streaming).
 - [Presence](https://docs.openclaw.ai/concepts/presence), [typing indicators](https://docs.openclaw.ai/concepts/typing-indicators), and [usage tracking](https://docs.openclaw.ai/concepts/usage-tracking).

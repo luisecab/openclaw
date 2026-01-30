@@ -3,7 +3,7 @@ import { initSubagentRegistry } from "../agents/subagent-registry.js";
 import { registerSkillsChangeListener } from "../agents/skills/refresh.js";
 import type { CanvasHostServer } from "../canvas-host/server.js";
 import { type ChannelId, listChannelPlugins } from "../channels/plugins/index.js";
-import { createDefaultDeps } from "../cli/deps.js";
+import { createDefaultDeps, createOutboundSendDeps } from "../cli/deps.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import {
   CONFIG_PATH,
@@ -30,6 +30,7 @@ import { scheduleGatewayUpdateCheck } from "../infra/update-startup.js";
 import { setGatewaySigusr1RestartPolicy } from "../infra/restart.js";
 import { startDiagnosticHeartbeat, stopDiagnosticHeartbeat } from "../logging/diagnostic.js";
 import { createSubsystemLogger, runtimeForLogger } from "../logging/subsystem.js";
+import { startJobSearchScheduler } from "../jobs/scheduler.js";
 import type { PluginServicesHandle } from "../plugins/services.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { runOnboardingWizard } from "../wizard/onboarding.js";
@@ -83,6 +84,7 @@ const logChannels = log.child("channels");
 const logBrowser = log.child("browser");
 const logHealth = log.child("health");
 const logCron = log.child("cron");
+const logJobs = log.child("jobs");
 const logReload = log.child("reload");
 const logHooks = log.child("hooks");
 const logPlugins = log.child("plugins");
@@ -264,6 +266,7 @@ export async function startGatewayServer(
   const { wizardSessions, findRunningWizard, purgeWizardSession } = createWizardSessionTracker();
 
   const deps = createDefaultDeps();
+  const outboundDeps = createOutboundSendDeps(deps);
   let canvasHostServer: CanvasHostServer | null = null;
   const gatewayTls = await loadGatewayTlsRuntime(cfgAtStart.gateway?.tls, log.child("tls"));
   if (cfgAtStart.gateway?.tls?.enabled && !gatewayTls.enabled) {
@@ -334,6 +337,11 @@ export async function startGatewayServer(
     broadcast,
   });
   let { cron, storePath: cronStorePath } = cronState;
+  const jobSearchScheduler = startJobSearchScheduler({
+    cfg: cfgAtStart,
+    outboundDeps,
+    log: logJobs,
+  });
 
   const channelManager = createChannelManager({
     loadConfig,
@@ -513,6 +521,7 @@ export async function startGatewayServer(
       hooksConfig,
       heartbeatRunner,
       cronState,
+      jobSearchScheduler,
       browserControl,
     }),
     setState: (nextState) => {
@@ -553,6 +562,7 @@ export async function startGatewayServer(
     stopChannel,
     pluginServices,
     cron,
+    jobSearchScheduler,
     heartbeatRunner,
     nodePresenceTimers,
     broadcast,

@@ -2,6 +2,7 @@ import type { CliDeps } from "../cli/deps.js";
 import type { loadConfig } from "../config/config.js";
 import { startGmailWatcher, stopGmailWatcher } from "../hooks/gmail-watcher.js";
 import type { HeartbeatRunner } from "../infra/heartbeat-runner.js";
+import type { JobSearchScheduler } from "../jobs/scheduler.js";
 import { resetDirectoryCache } from "../infra/outbound/target-resolver.js";
 import {
   authorizeGatewaySigusr1Restart,
@@ -20,6 +21,7 @@ type GatewayHotReloadState = {
   hooksConfig: ReturnType<typeof resolveHooksConfig>;
   heartbeatRunner: HeartbeatRunner;
   cronState: GatewayCronState;
+  jobSearchScheduler: JobSearchScheduler;
   browserControl: Awaited<ReturnType<typeof startBrowserControlServerIfEnabled>> | null;
 };
 
@@ -72,6 +74,10 @@ export function createGatewayReloadHandlers(params: {
       void nextState.cronState.cron
         .start()
         .catch((err) => params.logCron.error(`failed to start: ${String(err)}`));
+    }
+
+    if (plan.restartJobSearch) {
+      state.jobSearchScheduler.updateConfig(nextConfig);
     }
 
     if (plan.restartBrowserControl) {

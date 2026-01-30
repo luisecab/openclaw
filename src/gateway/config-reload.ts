@@ -19,6 +19,7 @@ export type GatewayReloadPlan = {
   restartGmailWatcher: boolean;
   restartBrowserControl: boolean;
   restartCron: boolean;
+  restartJobSearch: boolean;
   restartHeartbeat: boolean;
   restartChannels: Set<ChannelKind>;
   noopPaths: string[];
@@ -35,6 +36,7 @@ type ReloadAction =
   | "restart-gmail-watcher"
   | "restart-browser-control"
   | "restart-cron"
+  | "restart-job-search"
   | "restart-heartbeat"
   | `restart-channel:${ChannelId}`;
 
@@ -55,6 +57,7 @@ const BASE_RELOAD_RULES: ReloadRule[] = [
   },
   { prefix: "agent.heartbeat", kind: "hot", actions: ["restart-heartbeat"] },
   { prefix: "cron", kind: "hot", actions: ["restart-cron"] },
+  { prefix: "jobs", kind: "hot", actions: ["restart-job-search"] },
   {
     prefix: "browser",
     kind: "hot",
@@ -180,6 +183,7 @@ export function buildGatewayReloadPlan(changedPaths: string[]): GatewayReloadPla
     restartGmailWatcher: false,
     restartBrowserControl: false,
     restartCron: false,
+    restartJobSearch: false,
     restartHeartbeat: false,
     restartChannels: new Set(),
     noopPaths: [],
@@ -203,6 +207,9 @@ export function buildGatewayReloadPlan(changedPaths: string[]): GatewayReloadPla
         break;
       case "restart-cron":
         plan.restartCron = true;
+        break;
+      case "restart-job-search":
+        plan.restartJobSearch = true;
         break;
       case "restart-heartbeat":
         plan.restartHeartbeat = true;
